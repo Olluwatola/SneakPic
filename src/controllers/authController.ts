@@ -7,6 +7,7 @@ import MailVerification, {
 import { emailValidatorExports } from '../utils/emailValidator';
 import { randomAlphaNumericGeneratorExports } from '../utils/randomAlphaNumericGenerator';
 import { mailerExports } from '../utils/mailer';
+import { authHandlerExports } from '../handlers/authHandlers';
 
 const signUp = async (req: Request, res: Response, next: NextFunction) => {
     //res.send(req.body)
@@ -114,8 +115,10 @@ const requestMailVerificationCode = async (
                         });
                     })
                     .catch((error) => {
-                        throw Error(
-                            `an error occured while creating verification document`
+                        return next(
+                            new Error(
+                                `an error occured while creating verification document ${error}`
+                            )
                         );
                     });
             })
@@ -132,9 +135,43 @@ const requestMailVerificationCode = async (
     }
 };
 
+const login = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        //check if the user submitted mail AND password
+        //check if user exists on database
+        //check if password matches
+
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return next(new Error('Please provide email and password'));
+        } else {
+            //check if user exists
+            const foundUser = await User.findOne({ email: email })
+                .select('+password')
+                .exec();
+            //index email field in database
+
+            if (
+                !foundUser ||
+                !(await foundUser.correctPassword(password, foundUser.password))
+            ) {
+                return next(new Error('Incorrect email or password'));
+            }
+            authHandlerExports.sendJwtToCookie(foundUser, req, res, next);
+        }
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: `AN ERROR OCCURED ${error}`,
+        });
+    }
+};
+
 export const authControllerExports = {
     signUp,
     requestMailVerificationCode,
+    login,
 };
 
 // exclude password from displaying when u request user - checkkinngg.....

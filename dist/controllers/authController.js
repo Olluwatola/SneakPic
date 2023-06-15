@@ -18,6 +18,7 @@ const mailVerificationSchema_1 = __importDefault(require("../models/mailVerifica
 const emailValidator_1 = require("../utils/emailValidator");
 const randomAlphaNumericGenerator_1 = require("../utils/randomAlphaNumericGenerator");
 const mailer_1 = require("../utils/mailer");
+const authHandlers_1 = require("../handlers/authHandlers");
 const signUp = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     //res.send(req.body)
     try {
@@ -105,31 +106,41 @@ const requestMailVerificationCode = (req, res, next) => __awaiter(void 0, void 0
                 });
             })
                 .catch((error) => {
-                throw Error(`an error occured while creating verification document`);
+                return next(new Error(`an error occured while creating verification document ${error}`));
             });
         }))
             .catch((error) => {
             throw Error(`error occured with creating mail verification code ${error}`);
         });
-        // await MailVerification.create({
-        //     email: req.body.email,
-        //     mailVerificationCode: codeGenerated,
-        // }).then((mailVer) => {
-        //     mailerExports.transporter
-        //         .sendMail(mailOptions)
-        //         .then((info) => {
-        //             console.log('Email sent: ' + info.response);
-        //             res.status(201).json({
-        //                 status: 'success',
-        //                 message: `kindly check you mail, to check the verification mail sent`,
-        //             });
-        //         })
-        //         .catch((error) => {
-        //             throw Error(
-        //                 `error occured with creating mail verification code ${error}`
-        //             );
-        //         });
-        // });
+    }
+    catch (error) {
+        res.status(500).json({
+            status: 'error',
+            message: `AN ERROR OCCURED ${error}`,
+        });
+    }
+});
+const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        //check if the user submitted mail AND password
+        //check if user exists on database
+        //check if password matches
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return next(new Error('Please provide email and password'));
+        }
+        else {
+            //check if user exists
+            const foundUser = yield userSchema_1.default.findOne({ email: email })
+                .select('+password')
+                .exec();
+            //index email field in database
+            if (!foundUser ||
+                !(yield foundUser.correctPassword(password, foundUser.password))) {
+                return next(new Error('Incorrect email or password'));
+            }
+            authHandlers_1.authHandlerExports.sendJwtToCookie(foundUser, req, res, next);
+        }
     }
     catch (error) {
         res.status(500).json({
@@ -141,6 +152,7 @@ const requestMailVerificationCode = (req, res, next) => __awaiter(void 0, void 0
 exports.authControllerExports = {
     signUp,
     requestMailVerificationCode,
+    login,
 };
-// exclude password from displaying when u request user
-//rearrange the requestver cotrller
+// exclude password from displaying when u request user - checkkinngg.....
+//rearrange the requestver cotrller - done

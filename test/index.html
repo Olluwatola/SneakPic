@@ -1,11 +1,44 @@
 <html>
-    <head></head>
+    <head>
+        <title>My Webpage</title>
+    </head>
     <body>
-        <form action="localhost:2323/api/v1/users/signup" method="GET">
-            <input type="text" name="username">
-            <input type="password" name="password">
-            <input type="submit" value="Submit">
+        <div id="divOfNumbers">
+            print numbers 1-100
+        </div>
 
-        </form>
+
+
+        <script>
+            let name = prompt('Please enter your name');
+
+            alert("HelloWorld " + name)
+
+            
+            for (let i = 1; i < 101; i++) {
+                
+                var myElement = document.createElement('p');
+                myElement.textContent = `${i}`;
+        
+                // add the element to the DOM
+                var myDiv = document.getElementById('divOfNumbers');
+                myDiv.appendChild(myElement);
+            }
+
+            var arrayOfNums=[]
+
+            for (let i = 1; i < 6; i++) {
+                let numEntered=parseInt(prompt(`input the number ${i}`))
+                arrayOfNums.push(numEntered)
+            }
+            let sum = 0;
+
+            arrayOfNums.forEach(function(num) {
+            sum += num;
+            });
+
+            alert(`the sum of the five digits is ${sum} `)
+
+        </script>
     </body>
 </html>

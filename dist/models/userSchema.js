@@ -22,40 +22,54 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+//const bcrypt = require('bcryptjs');
+const bcrypt_1 = __importDefault(require("bcrypt"));
 const UserSchema = new mongoose_1.Schema({
     name: {
         type: String,
-        required: true
+        required: true,
     },
     email: {
         type: String,
         unique: true,
-        required: true
+        required: true,
     },
     username: {
         type: String,
         unique: true,
-        required: true
+        required: true,
     },
     phone: {
         type: Number,
-        unique: true
+        unique: true,
     },
     role: {
         type: String,
         required: true,
         enum: ['admin', 'unverified-user', 'verified-user'],
-        default: 'unverified-user'
+        default: 'unverified-user',
     },
     DOB: {
-        type: Date
+        type: Date,
     },
     isActive: {
         type: Boolean,
         default: true,
-        required: true
+        required: true,
     },
     password: {
         type: String,
@@ -76,9 +90,28 @@ const UserSchema = new mongoose_1.Schema({
         // }
     },
 });
+//pre hooks and post hooks
+UserSchema.pre('save', function (next) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // Only run this function if password was actually modified
+        if (!this.isModified('password'))
+            return next();
+        // Hash the password with cost of 12
+        this.password = yield bcrypt_1.default.hash(this.password, 12);
+        // Delete passwordConfirm field
+        this.passwordConfirm = undefined;
+        next();
+    });
+});
+//methods
+UserSchema.methods.correctPassword = function (candidatePassword, userPassword) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield bcrypt_1.default.compare(candidatePassword, userPassword);
+    });
+};
 //try to check if the mail has the structure of mails
 // use nodemailer to verify mail
 //make sure password and passwordConfirm match
-//encrypt password 
+//encrypt password
 //make sure passwordConfirm does not stay on the database
 exports.default = mongoose_1.default.model('User', UserSchema);

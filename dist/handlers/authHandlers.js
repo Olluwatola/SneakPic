@@ -27,6 +27,7 @@ let sendJwtToCookie = (foundUser, req, res, next) => __awaiter(void 0, void 0, v
     }).json({
         status: 'success',
         message: 'LOGIN SUCCESSFUL',
+        messageAccountCreated: `user successfully created`,
     });
     next();
 });

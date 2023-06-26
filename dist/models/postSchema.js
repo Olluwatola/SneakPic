@@ -66,8 +66,19 @@ const PostSchema = new mongoose_1.Schema({
         required: true,
         default: Date.now(),
     },
+    status: {
+        type: String,
+        enum: [
+            'active',
+            'archived',
+            'deleted',
+        ],
+        default: 'active',
+    }
 });
 //create a comment schema
 //add a prehook that runs wwhen the like route is requested that
 //increments the like count
+//add a prehook that exludes posts that have status = deleted or archived except if the archived
+//post belongs to current user
 exports.default = mongoose_1.default.model('Post', PostSchema);

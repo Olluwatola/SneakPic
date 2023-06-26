@@ -45,43 +45,32 @@ let getUserByEmail = (mailQueryString) => __awaiter(void 0, void 0, void 0, func
         return null;
     }
 });
-let getUserFromBearerToken = (reqHeadersAuthorization) => __awaiter(void 0, void 0, void 0, function* () {
+const getUserFromBearerToken = (reqHeadersAuthorization) => __awaiter(void 0, void 0, void 0, function* () {
     const authHeader = reqHeadersAuthorization;
     const secretKey = process.env.JWT_SECRET;
-    let foundUser;
-    console.log(authHeader);
+    let foundUser = null;
+    let jwtDecodedToken = null;
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        console.log(`this is the bearer ${authHeader} ${typeof authHeader}`);
         const token = authHeader.slice(7);
         try {
-            console.log(`this is the token ${token}`);
-            console.log('ok okokokokok');
-            let foundUser = yield promisify(jsonwebtoken_1.default.verify)(token, process.env.JWT_SECRET)
-                .then((jwtDecodedToken) => __awaiter(void 0, void 0, void 0, function* () {
-                const userID = jwtDecodedToken.user_id;
-                // console.log(
-                //     `this is the decoded token ${JSON.stringify(decodedToken)}`
-                // );
-                console.log(`this is the id ${userID}`);
-                foundUser = yield userSchema_1.default.findById(userID.trim());
-                console.log(`this is the foundUser ${foundUser}`);
-                return foundUser;
-            }))
-                .catch((err) => {
-                throw err;
-            });
-            return foundUser;
+            jwtDecodedToken = jsonwebtoken_1.default.verify(token, secretKey);
+            const userID = jwtDecodedToken.user_id;
+            foundUser = yield userSchema_1.default.findById(userID.trim());
+            return { foundUser, jwtDecodedToken };
         }
         catch (err) {
-            //console.log(err.stack)
-            if (err.stack.includes('TokenExpiredError: jwt expired')) {
+            if (err.name === 'TokenExpiredError') {
                 return false;
+            }
+            else {
+                throw err;
             }
         }
     }
     else {
-        console.log(`theree is no bearer`);
+        console.log(`there is no bearer`);
     }
+    return null;
 });
 exports.userHandlerExports = {
     getUsersByQuery,

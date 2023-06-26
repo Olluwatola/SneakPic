@@ -21,6 +21,7 @@ let sendJwtToCookie = async (
     }).json({
         status: 'success',
         message: 'LOGIN SUCCESSFUL',
+        messageAccountCreated:`user successfully created`,
     });
     next();
 };

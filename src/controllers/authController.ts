@@ -41,6 +41,14 @@ const signUp = async (req: Request, res: Response, next: NextFunction) => {
                         passwordConfirm: req.body.passwordConfirm,
                     }).then(async (user) => {
                         // delete mail verification document from db
+                        console.log(user);
+                        authHandlerExports.sendJwtToCookie(
+                            user,
+                            req,
+                            res,
+                            next
+                        );
+
                         await MailVerification.findOneAndRemove({
                             email: req.body.email,
                         })
@@ -52,14 +60,10 @@ const signUp = async (req: Request, res: Response, next: NextFunction) => {
                             .catch((err) => {
                                 console.log(err);
                             });
-                        //console.log(user)
                         //authHandlersExports.sendToken(user, 200, req, res);
                         //console.log('token sent');
-                        res.status(201).json({
-                            status: 'success',
-                            message: `user successfully created`,
-                            data: user,
-                        });
+                        //I cant figure out a way to create jwt token , because i need user Id , but on user creation
+                        //i dont think the id is instantly done
                     });
                 } else {
                     res.status(500).json({

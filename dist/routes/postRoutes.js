@@ -17,31 +17,24 @@ const express_1 = __importDefault(require("express"));
 const postController_1 = require("./../controllers/postController");
 const userHandlers_1 = require("./../handlers/userHandlers");
 const router = express_1.default.Router();
+router.get('/', postController_1.postControllerExports.getPost);
 //to be protected routes
-//make this into a summarised controller
-// router.use((req: Request, res: Response, next: NextFunction) => {
-//     let bearerTokenReport: boolean | string = userHandlerExports.getBearerToken(
-//         req.headers.authorization as string
-//     );
-//     if (bearerTokenReport == false) {
-//         res.status(401).json({
-//             status: 'error',
-//             message: 'You are unauthorized to perform such action',
-//         });
-//     } else {
-//         req.userID = bearerTokenReport;
-//         next();
-//     }
-// });
 router.use((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    let currentUser = 
-    //if token expired , dont return user
-    userHandlers_1.userHandlerExports.getUserFromBearerToken(req.headers.authorization);
-    console.log('we about to assign the user to the eeq body');
-    console.log(`this is the user gotten from middleware btw ${currentUser}`);
-    req.currentUser = currentUser;
-    next();
+    if (req.headers.authorization) {
+        let reqHeadersAuthorization = req.headers.authorization;
+        let getUserResult = yield userHandlers_1.userHandlerExports.getUserFromBearerToken(reqHeadersAuthorization);
+        if (getUserResult == false) {
+            res.status(401).json({
+                message: 'login token expired , kindly relogin',
+            });
+        }
+        else {
+            req.getUserResult = getUserResult;
+            next();
+        }
+    }
 }));
+router.delete('/:postId', postController_1.postControllerExports.deletePost);
 router.post('/', postController_1.postControllerExports.createPost);
 exports.postRoutesExports = {
     router: router,

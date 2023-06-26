@@ -6,6 +6,12 @@ interface ImailQuery {
     email: string;
 }
 
+export interface AuthResult {
+    foundUser: IUserModel | null;
+    jwtDecodedToken: JwtPayload | null;
+  }
+  
+
 let getUsersByQuery = async (queryString: JSON) => {
     let doc = await User.find({ queryString });
     if (doc) {
@@ -37,49 +43,38 @@ let getUserByEmail = async (
     }
 };
 
-let getUserFromBearerToken = async (
-    reqHeadersAuthorization: string
-): Promise<IUserModel | null | Error | undefined | boolean> => {
-    const authHeader = reqHeadersAuthorization;
-    const secretKey: string = process.env.JWT_SECRET as string;
-    let foundUser: IUserModel | null;
-    console.log(authHeader);
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        console.log(`this is the bearer ${authHeader} ${typeof authHeader}`);
-        const token = authHeader.slice(7);
-        try {
-            console.log(`this is the token ${token}`);
-            console.log('ok okokokokok');
+const getUserFromBearerToken = async (
+  reqHeadersAuthorization: string
+): Promise<AuthResult | null | Error | undefined | boolean> => {
+  const authHeader = reqHeadersAuthorization;
+  const secretKey: string = process.env.JWT_SECRET as string;
+  let foundUser: IUserModel | null = null;
+  let jwtDecodedToken: JwtPayload | null = null;
 
-            let foundUser = await promisify(jwt.verify)(
-                token,
-                process.env.JWT_SECRET
-            )
-                .then(async (jwtDecodedToken: JwtPayload) => {
-                    const userID: String = jwtDecodedToken.user_id;
-                    // console.log(
-                    //     `this is the decoded token ${JSON.stringify(decodedToken)}`
-                    // );
-                    console.log(`this is the id ${userID}`);
-                    foundUser = await User.findById(userID.trim());
-                    console.log(`this is the foundUser ${foundUser}`);
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
 
-                    return foundUser;
-                })
-                .catch((err: any) => {
-                    throw err
-                });
-                return foundUser;
-        } catch (err: any) {
-            //console.log(err.stack)
-            if (err.stack.includes('TokenExpiredError: jwt expired')) {
-                return false;
-            }
-        }
-    } else {
-        console.log(`theree is no bearer`);
+    try {
+      jwtDecodedToken = jwt.verify(token, secretKey) as JwtPayload;
+      const userID: string = jwtDecodedToken.user_id;
+
+      foundUser = await User.findById(userID.trim());
+
+      return { foundUser, jwtDecodedToken };
+    } catch (err: any) {
+      if (err.name === 'TokenExpiredError') {
+        return false;
+      } else {
+        throw err;
+      }
     }
+  } else {
+    console.log(`there is no bearer`);
+  }
+  
+  return null;
 };
+
 
 export const userHandlerExports = {
     getUsersByQuery,

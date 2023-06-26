@@ -16,6 +16,7 @@ export interface IPost {
     author: Schema.Types.ObjectId;
     caption: String;
     createdAt: Date;
+    status:string;
 }
 //you can implement a quote tweet type feature for the shares part
 //, but not necessary now!!
@@ -64,10 +65,22 @@ const PostSchema: Schema = new Schema({
         required: true,
         default: Date.now(),
     },
+    status:{
+        type: String,
+        enum: [
+            'active',
+            'archived',
+            'deleted',
+        ],
+        default: 'active',
+    }
 });
 
 //create a comment schema
 //add a prehook that runs wwhen the like route is requested that
 //increments the like count
+
+//add a prehook that exludes posts that have status = deleted or archived except if the archived
+//post belongs to current user
 
 export default mongoose.model<IPostModel>('Post', PostSchema);

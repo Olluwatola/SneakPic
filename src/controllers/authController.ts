@@ -127,6 +127,9 @@ const requestMailVerificationCode = async (
                     });
             })
             .catch((error) => {
+                console.log(error);
+                console.log(process.env.MAILERMAIL, process.env.MAILERPASS);
+
                 throw Error(
                     `error occured with creating mail verification code ${error}`
                 );

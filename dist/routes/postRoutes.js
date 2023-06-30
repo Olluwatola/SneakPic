@@ -24,7 +24,9 @@ router.use((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
         let reqHeadersAuthorization = req.headers.authorization;
         let getUserResult = yield userHandlers_1.userHandlerExports.getUserFromBearerToken(reqHeadersAuthorization);
         if (getUserResult == false) {
+            console.log(`hmmm token exp`);
             res.status(401).json({
+                status: 'error',
                 message: 'login token expired , kindly relogin',
             });
         }
@@ -33,9 +35,17 @@ router.use((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
             next();
         }
     }
+    else {
+        res.status(401).json({
+            status: 'error',
+            message: 'unauthorized, kindly login',
+        });
+    }
 }));
 router.delete('/:postId', postController_1.postControllerExports.deletePost);
 router.post('/', postController_1.postControllerExports.createPost);
+router.post('/like/:postId', postController_1.postControllerExports.likePost);
+router.post('/unlike/:postId', postController_1.postControllerExports.unlikePost);
 exports.postRoutesExports = {
     router: router,
 };

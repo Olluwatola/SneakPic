@@ -90,6 +90,13 @@ const UserSchema = new mongoose_1.Schema({
         // }
     },
 });
+// UserSchema.pre(/^find/, function (next) {
+//     this.populate({
+//         path: '',
+//         select: '-__v -password ',
+//     });
+//     next();
+// });
 //pre hooks and post hooks
 UserSchema.pre('save', function (next) {
     return __awaiter(this, void 0, void 0, function* () {

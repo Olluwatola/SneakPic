@@ -1,10 +1,11 @@
 import nodemailer from 'nodemailer';
 
+
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: 'sneakpmail@gmail.com',
-        pass: 'lqxbjktjuqqvxvab'
+        user: process.env.MAILER_MAIL,
+        pass: process.env.MAILER_PASS
     }
 });
 

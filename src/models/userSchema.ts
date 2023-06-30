@@ -75,6 +75,15 @@ const UserSchema: Schema = new Schema({
     },
 });
 
+
+// UserSchema.pre(/^find/, function (next) {
+//     this.populate({
+//         path: '',
+//         select: '-__v -password ',
+//     });
+
+//     next();
+// });
 //pre hooks and post hooks
 UserSchema.pre('save', async function (next) {
     // Only run this function if password was actually modified

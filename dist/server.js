@@ -9,7 +9,7 @@ const config_1 = require("./config/config");
 const app_1 = require("./app");
 dotenv_1.default.config();
 mongoose_1.default
-    .connect('mongodb://127.0.0.1:27017/SPic')
+    .connect(process.env.DB_HOST)
     .then(() => {
     console.log(`mongoose connected on port ${config_1.config.server.port}`);
 })

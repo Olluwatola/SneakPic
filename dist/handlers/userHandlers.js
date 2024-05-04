@@ -15,9 +15,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.userHandlerExports = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const userSchema_1 = __importDefault(require("../models/userSchema"));
-const { promisify } = require('util');
-let getUsersByQuery = (queryString) => __awaiter(void 0, void 0, void 0, function* () {
-    let doc = yield userSchema_1.default.find({ queryString });
+const catchAsync_1 = __importDefault(require("../utils/catchAsync"));
+const appError_1 = __importDefault(require("../utils/appError"));
+const getUsersByQuery = (queryString) => __awaiter(void 0, void 0, void 0, function* () {
+    const doc = yield userSchema_1.default.find({ queryString });
     if (doc) {
         return doc;
     }
@@ -25,19 +26,8 @@ let getUsersByQuery = (queryString) => __awaiter(void 0, void 0, void 0, functio
         return null;
     }
 });
-let getBearerToken = (reqHeadersAuthorization) => {
-    const authHeader = reqHeadersAuthorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        console.log(`this is the bearer ${authHeader} ${typeof authHeader}`);
-        const token = authHeader.slice(7);
-        return token;
-    }
-    else {
-        return false;
-    }
-};
-let getUserByEmail = (mailQueryString) => __awaiter(void 0, void 0, void 0, function* () {
-    let doc = yield userSchema_1.default.findOne({ mailQueryString });
+const getUserByEmail = (mailQueryString) => __awaiter(void 0, void 0, void 0, function* () {
+    const doc = yield userSchema_1.default.findOne({ mailQueryString });
     if (doc) {
         return doc;
     }
@@ -45,36 +35,21 @@ let getUserByEmail = (mailQueryString) => __awaiter(void 0, void 0, void 0, func
         return null;
     }
 });
-const getUserFromBearerToken = (reqHeadersAuthorization) => __awaiter(void 0, void 0, void 0, function* () {
-    const authHeader = reqHeadersAuthorization;
-    const secretKey = process.env.JWT_SECRET;
-    let foundUser = null;
-    let jwtDecodedToken = null;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.slice(7);
-        try {
-            jwtDecodedToken = jsonwebtoken_1.default.verify(token, secretKey);
-            const userID = jwtDecodedToken.user_id;
-            foundUser = yield userSchema_1.default.findById(userID.trim());
-            return { foundUser, jwtDecodedToken };
-        }
-        catch (err) {
-            if (err.name === 'TokenExpiredError') {
-                return false;
-            }
-            else {
-                throw err;
-            }
-        }
+const protect = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    //get  bearer
+    if (req.headers.authorization &&
+        req.headers.authorization.startsWith('Bearer ')) {
+        const secretKey = process.env.JWT_SECRET;
+        const jwtDecoded = jsonwebtoken_1.default.verify(req.headers.authorization.slice(7), secretKey);
+        req.currentUser = yield userSchema_1.default.findById(jwtDecoded === null || jwtDecoded === void 0 ? void 0 : jwtDecoded.user_id.trim());
+        next();
     }
     else {
-        console.log(`there is no bearer`);
+        return next(new appError_1.default('unauthorized, no bearer recognized. kindly login', 401));
     }
-    return null;
-});
+}));
 exports.userHandlerExports = {
     getUsersByQuery,
     getUserByEmail,
-    getBearerToken,
-    getUserFromBearerToken,
+    protect,
 };

@@ -36,8 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-//const bcrypt = require('bcryptjs');
-const bcrypt_1 = __importDefault(require("bcrypt"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const UserSchema = new mongoose_1.Schema({
     name: {
         type: String,
@@ -81,22 +80,15 @@ const UserSchema = new mongoose_1.Schema({
     passwordConfirm: {
         type: String,
         required: [true, 'Please confirm your password'],
-        // validate: {
-        // // This only works on CREATE and SAVE!!!
-        // validator: function(el:string) {
-        //     return el === this.password;
-        // },
-        // message: 'Passwords are not the same!'
-        // }
+        validate: {
+            // // This only works on CREATE and SAVE!!!
+            validator: function (el) {
+                return el === this.password;
+            },
+            message: 'Password and confirm password are not the same!',
+        },
     },
 });
-// UserSchema.pre(/^find/, function (next) {
-//     this.populate({
-//         path: '',
-//         select: '-__v -password ',
-//     });
-//     next();
-// });
 //pre hooks and post hooks
 UserSchema.pre('save', function (next) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -104,7 +96,7 @@ UserSchema.pre('save', function (next) {
         if (!this.isModified('password'))
             return next();
         // Hash the password with cost of 12
-        this.password = yield bcrypt_1.default.hash(this.password, 12);
+        this.password = yield bcryptjs_1.default.hash(this.password, 12);
         // Delete passwordConfirm field
         this.passwordConfirm = undefined;
         next();
@@ -113,12 +105,7 @@ UserSchema.pre('save', function (next) {
 //methods
 UserSchema.methods.correctPassword = function (candidatePassword, userPassword) {
     return __awaiter(this, void 0, void 0, function* () {
-        return yield bcrypt_1.default.compare(candidatePassword, userPassword);
+        return yield bcryptjs_1.default.compare(candidatePassword, userPassword);
     });
 };
-//try to check if the mail has the structure of mails
-// use nodemailer to verify mail
-//make sure password and passwordConfirm match
-//encrypt password
-//make sure passwordConfirm does not stay on the database
 exports.default = mongoose_1.default.model('User', UserSchema);

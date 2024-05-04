@@ -14,163 +14,129 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.postControllerExports = void 0;
 const postSchema_1 = __importDefault(require("../models/postSchema"));
-const mongodb_1 = require("mongodb");
-const getPost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () { });
-const deletePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
-    try {
-        let postToBeDeleted = req.params.postId;
-        //console.log(req.params);
+const appError_1 = __importDefault(require("../utils/appError"));
+const catchAsync_1 = __importDefault(require("../utils/catchAsync"));
+const PostLikeSchema_1 = __importDefault(require("../models/PostLikeSchema"));
+const getPost = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    yield postSchema_1.default.findById(req.params.id)
+        .populate('author')
+        .select('-__v')
+        .exec()
+        .then((post) => __awaiter(void 0, void 0, void 0, function* () {
+        if (!post || post.status === 'deleted') {
+            return next(new appError_1.default('post not found ', 404));
+        }
+        res.status(201).json({
+            status: 'success',
+            doc: post,
+        });
+    }));
+}));
+const deletePost = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    yield postSchema_1.default.findById(req.params.postId).then((post) => __awaiter(void 0, void 0, void 0, function* () {
+        var _a;
+        if (!post || post.status === 'deleted') {
+            return next(new appError_1.default('post not found ', 404));
+        }
+        if (post.author !== ((_a = req.currentUser) === null || _a === void 0 ? void 0 : _a.id)) {
+            return next(new appError_1.default('unauthorized ', 401));
+        }
         yield postSchema_1.default.findOneAndUpdate({
-            _id: postToBeDeleted,
-            author: (_b = (_a = req.getUserResult) === null || _a === void 0 ? void 0 : _a.foundUser) === null || _b === void 0 ? void 0 : _b.id,
+            _id: post.id,
         }, { status: 'deleted' }, { new: true, runValidators: true }).then((post) => {
-            if (post) {
-                res.status(201).json({
-                    status: 'success',
-                    message: 'post deleted successfully.',
-                });
+            if (!post) {
+                return next(new appError_1.default('post not found ', 404));
             }
-            else if (post == null) {
-                res.status(404).json({
-                    status: 'error',
-                    message: 'Post not found or unauthorized',
-                });
-            }
-        });
-    }
-    catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'an internal server error has occured',
-        });
-    }
-    //console.log(postToBeDeleted, req.getUserResult?.foundUser?.id, doc);
-});
-const createPost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _c, _d, _e, _f;
-    try {
-        if ((_d = (_c = req.getUserResult) === null || _c === void 0 ? void 0 : _c.foundUser) === null || _d === void 0 ? void 0 : _d.id) {
-            const doc = yield postSchema_1.default.create({
-                author: (_f = (_e = req.getUserResult) === null || _e === void 0 ? void 0 : _e.foundUser) === null || _f === void 0 ? void 0 : _f.id,
-                caption: req.body.caption,
-            });
-            //if no user in the currentuser , return please login
             res.status(201).json({
                 status: 'success',
-                data: {
-                    data: doc,
-                }, //ok
+                message: 'post deleted successfully.',
             });
-        }
-        else {
-            res.status(400).json({
-                status: 'error',
-                message: 'user not found, kindly login',
-            });
-        }
-    }
-    catch (error) {
-        res.status(500).json({
-            status: 'error',
-            err: {
-                message: 'an error has occured',
-                error: error,
-            },
         });
-    }
-});
-const likePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _g, _h, _j, _k;
-    try {
-        //check if the post to be liked exists or has been deleted
-        let post = (yield postSchema_1.default.findById(req.params.postId));
+    }));
+}));
+const createPost = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _b;
+    const doc = yield postSchema_1.default.create({
+        author: (_b = req.currentUser) === null || _b === void 0 ? void 0 : _b.id,
+        caption: req.body.caption,
+    });
+    res.status(201).json({
+        status: 'success',
+        data: {
+            data: doc,
+        },
+    });
+}));
+const likePost = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _c;
+    //check if the post to be liked exists or has been deleted
+    (yield postSchema_1.default.findById(req.params.postId).then((post) => {
         if (!post || post.status == 'deleted') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Post not found',
-            });
+            return next(new appError_1.default('post not found ', 404));
         }
-        // Check if the user already liked the post
-        if (post.likes.includes((_h = (_g = req.getUserResult) === null || _g === void 0 ? void 0 : _g.foundUser) === null || _h === void 0 ? void 0 : _h.id)) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Post already liked by user',
-            });
-        }
-        //add the user id to the likes array
-        post.likes.push(new mongodb_1.ObjectId((_k = (_j = req.getUserResult) === null || _j === void 0 ? void 0 : _j.foundUser) === null || _k === void 0 ? void 0 : _k.id));
+    }));
+    // Check if the user already liked the post
+    //we do this by trying to add the PostLike document, and allow the compound index throw
+    //an error if the PostLike document exists already
+    //we handle the error in error handle mw
+    //create the PostLike document
+    PostLikeSchema_1.default.create({
+        user: (_c = req.currentUser) === null || _c === void 0 ? void 0 : _c.id,
+        postId: req.params.postId,
+    })
+        .then(() => __awaiter(void 0, void 0, void 0, function* () {
         //update the likesCount field
-        yield post.updateLikesCount();
-        yield post.save();
-        console.log('successfully updated post');
-        return res.status(200).json({
+        const likes = yield PostLikeSchema_1.default.find({
+            postId: req.params.postId,
+        });
+        yield postSchema_1.default.findByIdAndUpdate(req.params.postId, {
+            likesCount: likes.length,
+        });
+        res.status(200).json({
             status: 'success',
-            message: 'post successfully liked by user',
-            data: {
-                data: post,
-            },
+            message: 'post successfully liked',
         });
-    }
-    catch (err) {
-        console.log(err);
-        res.status(500).json({
-            status: 'error',
-            err: {
-                message: 'an error has occured',
-                error: err,
-            },
-        });
-    }
-});
-const unlikePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _l, _m, _o, _p;
-    try {
-        let post = (yield postSchema_1.default.findById(req.params.postId));
+    }))
+        .catch((err) => {
+        return next(err);
+    });
+    //console.log('successfully updated post');
+}));
+const unlikePost = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _d;
+    //check if the post to be liked exists or has been deleted
+    (yield postSchema_1.default.findById(req.params.postId).then((post) => {
         if (!post || post.status == 'deleted') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Post not found',
-            });
+            return next(new appError_1.default('post not found ', 404));
         }
-        // Check if the user already liked the post
-        if (!post.likes.includes((_m = (_l = req.getUserResult) === null || _l === void 0 ? void 0 : _l.foundUser) === null || _m === void 0 ? void 0 : _m.id)) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Post not liked by user',
-            });
+    }));
+    // remove the document
+    yield PostLikeSchema_1.default.findOneAndDelete({
+        user: (_d = req.currentUser) === null || _d === void 0 ? void 0 : _d.id,
+        postId: req.params.postId,
+    })
+        .then((postlike) => __awaiter(void 0, void 0, void 0, function* () {
+        // if the returned doc is nul, that means the user never liked the post
+        if (postlike === null) {
+            return next(new appError_1.default('you cannot unlike post you have not liked ', 404));
         }
-        const indexToRemove = post.likes.indexOf((_p = (_o = req.getUserResult) === null || _o === void 0 ? void 0 : _o.foundUser) === null || _p === void 0 ? void 0 : _p.id);
-        // if (indexToRemove == -1) {
-        //     return res.status(400).json({
-        //         status: 'error',
-        //         message: 'Post not liked by user',
-        //     });
-        // }
-        if (indexToRemove !== -1) {
-            post.likes.splice(indexToRemove, 1);
-            yield post.updateLikesCount();
-            yield post.save();
-            return res.status(200).json({
-                status: 'success',
-                message: 'post successfully unliked by user',
-                data: {
-                    data: post,
-                },
-            });
-        }
-    }
-    catch (error) {
-        console.log(error);
-        res.status(500).json({
-            status: 'error',
-            err: {
-                message: 'an error has occured',
-                error: error,
-            },
+        //update the likesCount field
+        const likes = yield PostLikeSchema_1.default.find({
+            postId: req.params.postId,
         });
-    }
-});
+        yield postSchema_1.default.findByIdAndUpdate(req.params.postId, {
+            likesCount: likes.length,
+        });
+        res.status(200).json({
+            status: 'success',
+            message: 'post successfully unliked',
+        });
+    }))
+        .catch((err) => {
+        return next(err);
+    });
+    //if document doesnt exist it throws error to be handled in error handling mw
+}));
 exports.postControllerExports = {
     createPost,
     getPost,

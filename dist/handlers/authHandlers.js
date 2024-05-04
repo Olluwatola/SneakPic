@@ -17,7 +17,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 let sendJwtToCookie = (foundUser, req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const payload = {
         user_id: foundUser.id,
-        exp: Math.floor(Date.now() / 1000) + 60 * 30, // Expiration time of 30 minutes
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, // Expiration time of 30 days
     };
     const token = jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET);
     res.cookie('jwt_token', token, {
@@ -26,10 +26,10 @@ let sendJwtToCookie = (foundUser, req, res, next) => __awaiter(void 0, void 0, v
         sameSite: 'strict',
     }).json({
         status: 'success',
-        message: 'LOGIN SUCCESSFUL',
-        messageAccountCreated: `user successfully created`,
+        user: foundUser,
+        message: 'access token sent',
     });
-    next();
+    //next();
 });
 exports.authHandlerExports = {
     sendJwtToCookie,

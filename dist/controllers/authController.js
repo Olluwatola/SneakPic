@@ -13,146 +13,90 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authControllerExports = void 0;
+const catchAsync_1 = __importDefault(require("../utils/catchAsync"));
 const userSchema_1 = __importDefault(require("../models/userSchema"));
 const mailVerificationSchema_1 = __importDefault(require("../models/mailVerificationSchema"));
+const appError_1 = __importDefault(require("../utils/appError"));
 const emailValidator_1 = require("../utils/emailValidator");
 const randomAlphaNumericGenerator_1 = require("../utils/randomAlphaNumericGenerator");
 const mailer_1 = require("../utils/mailer");
 const authHandlers_1 = require("../handlers/authHandlers");
-const signUp = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    //res.send(req.body)
-    try {
-        const emailStringValidity = yield emailValidator_1.emailValidatorExports.isValidEmail(req.body.email);
-        if (emailStringValidity == false) {
-            throw Error('The email inputted does not look like a valid email, retry !');
-        }
-        yield mailVerificationSchema_1.default.findOne({ email: req.body.email }).then((mailVer) => __awaiter(void 0, void 0, void 0, function* () {
-            if ((mailVer === null || mailVer === void 0 ? void 0 : mailVer.mailVerificationCode) ==
-                req.body.mailVerificationCode) {
-                console.log('creating user');
-                yield userSchema_1.default.create({
-                    name: req.body.name,
-                    email: req.body.email,
-                    username: req.body.username,
-                    phone: req.body.phone,
-                    //verificationStatus: req.body.verificationStatus,
-                    //role: req.body.role,
-                    DOB: req.body.DOB,
-                    password: req.body.password,
-                    passwordConfirm: req.body.passwordConfirm,
-                }).then((user) => __awaiter(void 0, void 0, void 0, function* () {
-                    // delete mail verification document from db
-                    console.log(user);
-                    authHandlers_1.authHandlerExports.sendJwtToCookie(user, req, res, next);
-                    yield mailVerificationSchema_1.default.findOneAndRemove({
-                        email: req.body.email,
-                    })
-                        .then(() => {
-                        console.log(`email verification document has been deleted`);
-                    })
-                        .catch((err) => {
-                        console.log(err);
-                    });
-                    //authHandlersExports.sendToken(user, 200, req, res);
-                    //console.log('token sent');
-                    //I cant figure out a way to create jwt token , because i need user Id , but on user creation
-                    //i dont think the id is instantly done
-                }));
-            }
-            else {
-                res.status(500).json({
-                    status: 'error',
-                    message: `recheck the code inputed`,
-                });
-            }
-        }));
+const signUp = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    if (emailValidator_1.emailValidatorExports.isValidEmail(req.body.email) == false) {
+        return next(new appError_1.default('The email inputted seems to not be a valid email, retry !', 422));
     }
-    catch (error) {
-        //if (error.code === 11000) {
-        //    error = 'A user with that email already exists';
-        //}
-        res.status(500).json({
-            status: 'error',
-            message: `AN ERROR OCCURED ${error}`,
-        });
-    }
-    //console.log(req)
-});
-const requestMailVerificationCode = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        //generate random code
-        const codeGenerated = randomAlphaNumericGenerator_1.randomAlphaNumericGeneratorExports.generateCode();
-        const mailOptions = {
-            from: 'sneakpmail@gmail.com',
-            to: req.body.email,
-            subject: 'Email Verification',
-            text: `input the following code to verify your mail ${codeGenerated}`,
-        };
-        mailer_1.mailerExports.transporter
-            .sendMail(mailOptions)
-            .then((info) => __awaiter(void 0, void 0, void 0, function* () {
-            yield mailVerificationSchema_1.default.create({
+    yield mailVerificationSchema_1.default.findOne({ email: req.body.email }).then((mailVer) => __awaiter(void 0, void 0, void 0, function* () {
+        if ((mailVer === null || mailVer === void 0 ? void 0 : mailVer.mailVerificationCode) ==
+            req.body.mailVerificationCode) {
+            //console.log('creating user');
+            yield userSchema_1.default.create({
+                name: req.body.name,
                 email: req.body.email,
-                mailVerificationCode: codeGenerated,
-            })
-                .then((mailVer) => {
-                console.log('mail verification document created');
-                console.log('Email sent: ' + info.response);
-                res.status(201).json({
-                    status: 'success',
-                    message: `kindly check you mail, to check the verification mail sent`,
+                username: req.body.username,
+                phone: req.body.phone,
+                DOB: req.body.DOB,
+                password: req.body.password,
+                passwordConfirm: req.body.passwordConfirm,
+            }).then((user) => __awaiter(void 0, void 0, void 0, function* () {
+                //console.log(user);
+                authHandlers_1.authHandlerExports.sendJwtToCookie(user, req, res, next);
+                // delete mail verification document from db
+                yield mailVerificationSchema_1.default.findOneAndRemove({
+                    email: req.body.email,
                 });
-            })
-                .catch((error) => {
-                return next(new Error(`an error occured while creating verification document ${error}`));
-            });
-        }))
-            .catch((error) => {
-            console.log(error);
-            console.log(process.env.MAILERMAIL, process.env.MAILERPASS);
-            throw Error(`error occured with creating mail verification code ${error}`);
-        });
-    }
-    catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: `AN ERROR OCCURED ${error}`,
-        });
-    }
-});
-const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        //check if the user submitted mail AND password
-        //check if user exists on database
-        //check if password matches
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return next(new Error('Please provide email and password'));
+            }));
         }
         else {
-            //check if user exists
-            const foundUser = yield userSchema_1.default.findOne({ email: email })
-                .select('+password')
-                .exec();
-            //index email field in database
-            if (!foundUser ||
-                !(yield foundUser.correctPassword(password, foundUser.password))) {
-                return next(new Error('Incorrect email or password'));
-            }
-            authHandlers_1.authHandlerExports.sendJwtToCookie(foundUser, req, res, next);
+            return next(new appError_1.default('recheck code inputed', 422));
         }
-    }
-    catch (error) {
-        res.status(500).json({
-            status: 'error',
-            message: `AN ERROR OCCURED ${error}`,
+    }));
+}));
+const requestMailVerificationCode = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    //generate random code
+    const codeGenerated = randomAlphaNumericGenerator_1.randomAlphaNumericGeneratorExports.generateCode();
+    const mailOptions = {
+        from: 'sneakpmail@gmail.com',
+        to: req.body.email,
+        subject: 'Email Verification',
+        text: `input the following code to verify your mail ${codeGenerated}`,
+    };
+    mailer_1.mailerExports.transporter.sendMail(mailOptions).then((info) => __awaiter(void 0, void 0, void 0, function* () {
+        yield mailVerificationSchema_1.default.create({
+            email: req.body.email,
+            mailVerificationCode: codeGenerated,
+        }).then(() => {
+            // console.log('mail verification document created');
+            // console.log('Email sent: ' + info.response);
+            res.status(201).json({
+                status: 'success',
+                message: `kindly check you mail, to check the verification mail sent`,
+            });
         });
+    }));
+}));
+const login = (0, catchAsync_1.default)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    //check if the user submitted mail AND password
+    //check if user exists on database
+    //check if password matches
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return next(new appError_1.default('Please provide email and password', 422));
     }
-});
+    else {
+        //check if user exists
+        const foundUser = yield userSchema_1.default.findOne({ email: email })
+            .select('+password')
+            .exec();
+        //index email field in database
+        if (!foundUser ||
+            !(yield foundUser.correctPassword(password, foundUser.password))) {
+            return next(new appError_1.default('Incorrect email or password', 422));
+        }
+        authHandlers_1.authHandlerExports.sendJwtToCookie(foundUser, req, res, next);
+    }
+}));
 exports.authControllerExports = {
     signUp,
     requestMailVerificationCode,
     login,
 };
-// exclude password from displaying when u request user - checkkinngg.....
-//rearrange the requestver cotrller - done

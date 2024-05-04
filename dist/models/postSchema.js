@@ -22,24 +22,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const PostSchema = new mongoose_1.Schema({
-    comments: [
-        {
-            type: mongoose_1.default.Schema.Types.ObjectId,
-            ref: 'Comment',
-        },
-    ],
+    //implement comments
     filenames: [
         {
             type: String,
@@ -48,12 +34,6 @@ const PostSchema = new mongoose_1.Schema({
     filelinks: [
         {
             type: String,
-        },
-    ],
-    likes: [
-        {
-            type: mongoose_1.default.Schema.Types.ObjectId,
-            ref: 'User',
         },
     ],
     likesCount: {
@@ -86,28 +66,13 @@ const PostSchema = new mongoose_1.Schema({
 //     toObject: { virtuals: true },
 // }
 );
-console.log('about to enter the hooks');
+//only fetch docs that have not being deleted
 PostSchema.pre(/^find/, function (next) {
-    this.populate({
-        path: 'author',
-        select: '-__v -status',
-    });
+    // this points to the current query
+    this.find({ status: { $ne: 'deleted' } });
     next();
 });
-//create a schema method that updates the likesCount field
-PostSchema.methods.updateLikesCount = function () {
-    return __awaiter(this, void 0, void 0, function* () {
-        const likesCount = this.likes.length;
-        this.likesCount = likesCount;
-    });
-};
-// Define a virtual field for likesCount
-// PostSchema.virtual('likesCount').get(function () {
-//     return this.likes.length;
-// });
-//create a comment schema
-//add a prehook that runs wwhen the like route is requested that
-//increments the like count
+//on the controller level, filter archived posts
 //add a prehook that exludes posts that have status = deleted or archived except if the archived
 //post belongs to current user
 exports.default = mongoose_1.default.model('Post', PostSchema);

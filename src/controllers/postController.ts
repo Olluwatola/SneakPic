@@ -1,179 +1,155 @@
-import express, { NextFunction, Request, Response } from 'express';
-import Post, { IPost, IPostModel } from '../models/postSchema';
-import { ObjectId } from 'mongodb';
+import { NextFunction, Request, Response } from 'express';
+import Post, { IPostModel } from '../models/postSchema';
+import AppError from '../utils/appError';
+import catchAsync from '../utils/catchAsync';
+import PostLikeSchema from '../models/PostLikeSchema';
 
-const getPost = async (req: Request, res: Response, next: NextFunction) => {};
+const getPost = catchAsync(
+    async (req: Request, res: Response, next: NextFunction) => {
+        await Post.findById(req.params.id)
+            .populate('author')
+            .select('-__v')
+            .exec()
+            .then(async (post) => {
+                if (!post || post.status === 'deleted') {
+                    return next(new AppError('post not found ', 404));
+                }
+                res.status(201).json({
+                    status: 'success',
+                    doc: post,
+                });
+            });
+    }
+);
 
-const deletePost = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        let postToBeDeleted: string = req.params.postId;
-        //console.log(req.params);
-        await Post.findOneAndUpdate(
-            {
-                _id: postToBeDeleted,
-                author: req.getUserResult?.foundUser?.id,
-            },
-            { status: 'deleted' },
-            { new: true, runValidators: true }
-        ).then((post) => {
-            if (post) {
+const deletePost = catchAsync(
+    async (req: Request, res: Response, next: NextFunction) => {
+        await Post.findById(req.params.postId).then(async (post) => {
+            if (!post || post.status === 'deleted') {
+                return next(new AppError('post not found ', 404));
+            }
+            if (post.author !== req.currentUser?.id) {
+                return next(new AppError('unauthorized ', 401));
+            }
+            await Post.findOneAndUpdate(
+                {
+                    _id: post.id,
+                },
+                { status: 'deleted' },
+                { new: true, runValidators: true }
+            ).then((post) => {
+                if (!post) {
+                    return next(new AppError('post not found ', 404));
+                }
                 res.status(201).json({
                     status: 'success',
                     message: 'post deleted successfully.',
                 });
-            } else if (post == null) {
-                res.status(404).json({
-                    status: 'error',
-                    message: 'Post not found or unauthorized',
-                });
-            }
-        });
-    } catch (err) {
-        res.status(500).json({
-            status: 'error',
-            message: 'an internal server error has occured',
+            });
         });
     }
+);
 
-    //console.log(postToBeDeleted, req.getUserResult?.foundUser?.id, doc);
-};
-
-const createPost = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        if (req.getUserResult?.foundUser?.id) {
-            const doc = await Post.create({
-                author: req.getUserResult?.foundUser?.id,
-                caption: req.body.caption,
-            });
-            //if no user in the currentuser , return please login
-            res.status(201).json({
-                status: 'success',
-                data: {
-                    data: doc,
-                }, //ok
-            });
-        } else {
-            res.status(400).json({
-                status: 'error',
-                message: 'user not found, kindly login',
-            });
-        }
-    } catch (error: any) {
-        res.status(500).json({
-            status: 'error',
-            err: {
-                message: 'an error has occured',
-                error: error,
-            },
+const createPost = catchAsync(
+    async (req: Request, res: Response, next: NextFunction) => {
+        const doc = await Post.create({
+            author: req.currentUser?.id,
+            caption: req.body.caption,
         });
-    }
-};
-
-const likePost = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        //check if the post to be liked exists or has been deleted
-        let post: IPostModel = (await Post.findById(
-            req.params.postId
-        )) as IPostModel;
-        if (!post || post.status == 'deleted') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Post not found',
-            });
-        }
-
-        // Check if the user already liked the post
-        if (post.likes.includes(req.getUserResult?.foundUser?.id)) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Post already liked by user',
-            });
-        }
-
-        //add the user id to the likes array
-        post.likes.push(new ObjectId(req.getUserResult?.foundUser?.id));
-
-        //update the likesCount field
-        await post.updateLikesCount();
-
-        await post.save();
-
-        console.log('successfully updated post');
-
-        return res.status(200).json({
+        res.status(201).json({
             status: 'success',
-            message: 'post successfully liked by user',
             data: {
-                data: post,
-            },
-        });
-    } catch (err) {
-        console.log(err);
-        res.status(500).json({
-            status: 'error',
-            err: {
-                message: 'an error has occured',
-                error: err,
+                data: doc,
             },
         });
     }
-};
+);
 
-const unlikePost = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        let post: IPostModel = (await Post.findById(
-            req.params.postId
-        )) as IPostModel;
-
-        if (!post || post.status == 'deleted') {
-            return res.status(404).json({
-                status: 'error',
-                message: 'Post not found',
-            });
-        }
+const likePost = catchAsync(
+    async (req: Request, res: Response, next: NextFunction) => {
+        //check if the post to be liked exists or has been deleted
+        (await Post.findById(req.params.postId).then((post) => {
+            if (!post || post.status == 'deleted') {
+                return next(new AppError('post not found ', 404));
+            }
+        })) as IPostModel;
 
         // Check if the user already liked the post
-        if (!post.likes.includes(req.getUserResult?.foundUser?.id)) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Post not liked by user',
+        //we do this by trying to add the PostLike document, and allow the compound index throw
+        //an error if the PostLike document exists already
+        //we handle the error in error handle mw
+
+        //create the PostLike document
+        PostLikeSchema.create({
+            user: req.currentUser?.id,
+            postId: req.params.postId,
+        })
+            .then(async () => {
+                //update the likesCount field
+                const likes = await PostLikeSchema.find({
+                    postId: req.params.postId,
+                });
+
+                await Post.findByIdAndUpdate(req.params.postId, {
+                    likesCount: likes.length,
+                });
+
+                res.status(200).json({
+                    status: 'success',
+                    message: 'post successfully liked',
+                });
+            })
+            .catch((err) => {
+                return next(err);
             });
-        }
 
-        const indexToRemove: number = post.likes.indexOf(
-            req.getUserResult?.foundUser?.id
-        );
-
-        // if (indexToRemove == -1) {
-        //     return res.status(400).json({
-        //         status: 'error',
-        //         message: 'Post not liked by user',
-        //     });
-        // }
-
-        if (indexToRemove !== -1) {
-            post.likes.splice(indexToRemove, 1);
-            await post.updateLikesCount();
-            await post.save();
-            return res.status(200).json({
-                status: 'success',
-                message: 'post successfully unliked by user',
-                data: {
-                    data: post,
-                },
-            });
-        }
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({
-            status: 'error',
-            err: {
-                message: 'an error has occured',
-                error: error,
-            },
-        });
+        //console.log('successfully updated post');
     }
-};
+);
+
+const unlikePost = catchAsync(
+    async (req: Request, res: Response, next: NextFunction) => {
+        //check if the post to be liked exists or has been deleted
+        (await Post.findById(req.params.postId).then((post) => {
+            if (!post || post.status == 'deleted') {
+                return next(new AppError('post not found ', 404));
+            }
+        })) as IPostModel;
+        // remove the document
+        await PostLikeSchema.findOneAndDelete({
+            user: req.currentUser?.id,
+            postId: req.params.postId,
+        })
+            .then(async (postlike) => {
+                // if the returned doc is nul, that means the user never liked the post
+                if (postlike === null) {
+                    return next(
+                        new AppError(
+                            'you cannot unlike post you have not liked ',
+                            404
+                        )
+                    );
+                }
+                //update the likesCount field
+                const likes = await PostLikeSchema.find({
+                    postId: req.params.postId,
+                });
+
+                await Post.findByIdAndUpdate(req.params.postId, {
+                    likesCount: likes.length,
+                });
+
+                res.status(200).json({
+                    status: 'success',
+                    message: 'post successfully unliked',
+                });
+            })
+            .catch((err) => {
+                return next(err);
+            });
+        //if document doesnt exist it throws error to be handled in error handling mw
+    }
+);
 
 export const postControllerExports = {
     createPost,

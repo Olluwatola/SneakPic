@@ -1,13 +1,12 @@
 import mongoose, { Document, Schema } from 'mongoose';
-//const bcrypt = require('bcryptjs');
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export interface IUser {
     name: string;
     email: string;
     username: string;
     phone: number;
-    //verificationStatus: string;
+
     role: string;
     DOB: Date;
     isActive: boolean;
@@ -65,26 +64,18 @@ const UserSchema: Schema = new Schema({
         type: String,
         required: [true, 'Please confirm your password'],
 
-        // validate: {
-        // // This only works on CREATE and SAVE!!!
-        // validator: function(el:string) {
-        //     return el === this.password;
-        // },
-        // message: 'Passwords are not the same!'
-        // }
+        validate: {
+            // // This only works on CREATE and SAVE!!!
+            validator: function (el: string) {
+                return el === this.password;
+            },
+            message: 'Password and confirm password are not the same!',
+        },
     },
 });
 
-
-// UserSchema.pre(/^find/, function (next) {
-//     this.populate({
-//         path: '',
-//         select: '-__v -password ',
-//     });
-
-//     next();
-// });
 //pre hooks and post hooks
+
 UserSchema.pre('save', async function (next) {
     // Only run this function if password was actually modified
     if (!this.isModified('password')) return next();
@@ -99,16 +90,10 @@ UserSchema.pre('save', async function (next) {
 
 //methods
 UserSchema.methods.correctPassword = async function (
-    candidatePassword:string,
-    userPassword:string
+    candidatePassword: string,
+    userPassword: string
 ) {
     return await bcrypt.compare(candidatePassword as string, userPassword);
 };
-
-//try to check if the mail has the structure of mails
-// use nodemailer to verify mail
-//make sure password and passwordConfirm match
-//encrypt password
-//make sure passwordConfirm does not stay on the database
 
 export default mongoose.model<IUserModel>('User', UserSchema);

@@ -1,5 +1,5 @@
-import express, { NextFunction, Request, Response } from 'express';
-import User, { IUser, IUserModel } from '../models/userSchema';
+import { NextFunction, Request, Response } from 'express';
+import { IUserModel } from '../models/userSchema';
 import jwt from 'jsonwebtoken';
 
 let sendJwtToCookie = async (
@@ -10,7 +10,7 @@ let sendJwtToCookie = async (
 ) => {
     const payload = {
         user_id: foundUser.id,
-        exp: Math.floor(Date.now() / 1000) + 60 * 30, // Expiration time of 30 minutes
+        exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30, // Expiration time of 30 days
     };
     const token = jwt.sign(payload, process.env.JWT_SECRET as string);
 
@@ -20,12 +20,11 @@ let sendJwtToCookie = async (
         sameSite: 'strict',
     }).json({
         status: 'success',
-        message: 'LOGIN SUCCESSFUL',
-        messageAccountCreated:`user successfully created`,
+        user: foundUser,
+        message: 'access token sent',
     });
-    next();
+    //next();
 };
-
 export const authHandlerExports = {
     sendJwtToCookie,
 };
